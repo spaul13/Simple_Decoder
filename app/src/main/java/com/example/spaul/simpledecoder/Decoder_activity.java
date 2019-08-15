@@ -129,7 +129,15 @@ public class Decoder_activity {
                     Log.d(TAG, "output index= " +outIndex + ", info size = "+ info.size );
 
                     //need to add get output buffer here
+                    //Do we need to allocate this bytebuffer??
                     outputBuffer = mediaCodec.getOutputBuffer(outIndex);
+
+                    //added from stackoverflow
+                    outputBuffer.position(info.offset);
+                    outputBuffer.limit(info.offset + info.size);
+                    byte[] ba = new byte[outputBuffer.remaining()];
+                    outputBuffer.get(ba);
+
                     Log.d("SP", "size of the output buffer = " + outputBuffer.toString().length() + "," + outputBuffer.position()+","+outputBuffer.limit());
                     //save the bmp through a function
                     File outputFile = new File(FILES_DIR,
@@ -165,6 +173,7 @@ public class Decoder_activity {
             bos = new BufferedOutputStream(new FileOutputStream(filename));
             Log.d(TAG, "before creating bmp");
             Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
             Log.d(TAG, "before outbuf rewind");
             outputBuffer.rewind();
             Log.d(TAG, "copy pixels from buffer");
@@ -266,5 +275,13 @@ public class Decoder_activity {
             }
         }).start();
 
+    }
+
+    private void showSupportedColorFormat(android.media.MediaCodecInfo.CodecCapabilities caps) {
+        System.out.print("supported color format: ");
+        for (int c : caps.colorFormats) {
+            System.out.print(c + "\t");
+        }
+        System.out.println();
     }
 }
