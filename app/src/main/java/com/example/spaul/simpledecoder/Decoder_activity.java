@@ -39,12 +39,13 @@ public class Decoder_activity {
 
     private static final String TAG = "SP_MediaDecoder";
     //bmp configuration
-    private static int width = 4096;
-    private static int height = 512;
+    private static int m_width = 4096;
+    private static int m_height = 512;
     private ByteBuffer outputBuffer;
     private static int decode_count = 0;
     public static int MAX_FRAMES = 4;
     private ByteBuffer[] outputBuf_array;
+    private Image decoded_image;
 
 
     public boolean feedInputBuffer(MediaExtractor source, MediaCodec codec) {
@@ -146,7 +147,7 @@ public class Decoder_activity {
                     }
                     */
                     //opt 3:(API 21)
-                    Image decoded_image = mediaCodec.getOutputImage(outIndex);
+                    decoded_image = mediaCodec.getOutputImage(outIndex);
                     Log.d("SP", "output image size = " + decoded_image.toString().length() + ",["+decoded_image.getPlanes() + "," + decoded_image.getWidth() +"," + decoded_image.getHeight()+"]");
 
                     //added from stackoverflow
@@ -160,19 +161,23 @@ public class Decoder_activity {
                     Log.d("SP", "size of the output buffer = " + outputBuffer.toString().length() + "," + outputBuffer.position()+","+outputBuffer.limit());
                     */
                     //save the bmp through a function
-                    /*
+
                     File outputFile = new File(FILES_DIR,
                             String.format("frame-%02d.png", decode_count));
                     //long startWhen = System.nanoTime();
                     try {
                         Log.d(TAG, "Before calling save frame");
-                        if(decode_count<MAX_FRAMES)saveFrame(outputFile.toString());
+                        if(decode_count<MAX_FRAMES)
+                        {
+                            //saveFrame(outputFile.toString());
+                            saveFrame_image(outputFile.toString());
+                        }
                     }
                     catch(IOException e)
                     {
 
                     }
-                    */
+
                     decode_count++;
                     mediaCodec.releaseOutputBuffer(outIndex, false);
 
@@ -186,7 +191,44 @@ public class Decoder_activity {
             }
         }
     }
-    //for saving the frame
+    //for saving the frame from output Image to bitmap
+    public void saveFrame_image(String filename) throws IOException {
+        Log.d(TAG, "Inside saveFrame_image");
+        BufferedOutputStream bos = null;
+        try {
+            bos = new BufferedOutputStream(new FileOutputStream(filename));
+            //save the image into bitmap
+            if(decoded_image == null)
+            {
+                Log.d(TAG, "decoded image is null");
+            }
+            int width = decoded_image.getWidth();
+            int height = decoded_image.getHeight();
+            final Image.Plane[] planes = decoded_image.getPlanes();
+            Log.d("SP", "width, height = " +width + "," + height +", planes length = " + planes.length);
+            final ByteBuffer buffer = planes[0].getBuffer();
+            Log.d("SP", " bytebuffer size = " + buffer.limit() + "," +buffer.position());
+            int pixelStride = planes[0].getPixelStride();
+            int rowStride = planes[0].getRowStride();
+            int rowPadding = rowStride - pixelStride * width;
+            Log.d("SP", "ps, rs, rp" + pixelStride + "," +rowStride + "," +rowPadding);
+            Bitmap bitmap = Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888);
+            Log.d(TAG, "before copy pixels from buffer");
+            buffer.rewind();
+            bitmap.copyPixelsFromBuffer(buffer);
+            Log.d(TAG, "before saving the bmp");
+            bitmap.compress(Bitmap.CompressFormat.PNG, 90, bos);
+            //bitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height);
+            Log.d(TAG, "bmp recycle");
+            bitmap.recycle();
+        } finally {
+            if (bos != null) bos.close();
+        }
+
+
+    }
+
+    //for saving the frame from outbytebuffer to bitmap
     public void saveFrame(String filename) throws IOException {
 
         Log.d(TAG, "Inside saveFrame");
@@ -194,7 +236,7 @@ public class Decoder_activity {
         try {
             bos = new BufferedOutputStream(new FileOutputStream(filename));
             Log.d(TAG, "before creating bmp");
-            Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Bitmap bmp = Bitmap.createBitmap(m_width, m_height, Bitmap.Config.ARGB_8888);
 
             Log.d(TAG, "before outbuf rewind");
             outputBuffer.rewind();
@@ -207,7 +249,7 @@ public class Decoder_activity {
         } finally {
             if (bos != null) bos.close();
         }
-        Log.d(TAG, "Saved " + width + "x" + height + " frame as '" + filename + "'");
+        Log.d(TAG, "Saved " + m_width + "x" + m_height + " frame as '" + filename + "'");
 
 
     }
