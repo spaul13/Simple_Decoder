@@ -20,11 +20,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import android.media.Image;
 
 import static android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM;
 import static android.media.MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED;
 import static android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED;
 import static android.media.MediaCodec.INFO_TRY_AGAIN_LATER;
+
 
 /**
  * Created by spaul on 8/14/2019.
@@ -42,6 +44,7 @@ public class Decoder_activity {
     private ByteBuffer outputBuffer;
     private static int decode_count = 0;
     public static int MAX_FRAMES = 4;
+    private ByteBuffer[] outputBuf_array;
 
 
     public boolean feedInputBuffer(MediaExtractor source, MediaCodec codec) {
@@ -105,7 +108,8 @@ public class Decoder_activity {
             mediaCodec.releaseOutputBuffer(outIndex, false);
             return false;
         }
-
+        //Info: INFO_OUTPUT_BUFFERS_CHANGED and getOutputBuffers() got deprecated at API 21, introduced at API 17
+        //for getOutputBuffer(), getOutputImage() are also introduced at API 21
         switch (outIndex)
         {
             case INFO_OUTPUT_BUFFERS_CHANGED:
@@ -130,16 +134,33 @@ public class Decoder_activity {
 
                     //need to add get output buffer here
                     //Do we need to allocate this bytebuffer??
+                    //option 1: (API 21)
                     outputBuffer = mediaCodec.getOutputBuffer(outIndex);
+                    //option 2:
+                    /*
+                    outputBuf_array = mediaCodec.getOutputBuffers();
+                    Log.d("SP","outputbuf length = " + outputBuf_array.length);
+                    for(int i=0; i<outputBuf_array.length; i++)
+                    {
+                        Log.d("SP", " i = " + i + ", outputBuffer size = " + outputBuf_array[i].toString().length() + "," + outputBuf_array[i].position()+"," +outputBuf_array[i].limit());
+                    }
+                    */
+                    //opt 3:(API 21)
+                    Image decoded_image = mediaCodec.getOutputImage(outIndex);
+                    Log.d("SP", "output image size = " + decoded_image.toString().length() + ",["+decoded_image.getPlanes() + "," + decoded_image.getWidth() +"," + decoded_image.getHeight()+"]");
 
                     //added from stackoverflow
+                    //while using getoutputimage() outbuffer becomes inaccessible (showing error)
+                    /*
                     outputBuffer.position(info.offset);
                     outputBuffer.limit(info.offset + info.size);
                     byte[] ba = new byte[outputBuffer.remaining()];
                     outputBuffer.get(ba);
 
                     Log.d("SP", "size of the output buffer = " + outputBuffer.toString().length() + "," + outputBuffer.position()+","+outputBuffer.limit());
+                    */
                     //save the bmp through a function
+                    /*
                     File outputFile = new File(FILES_DIR,
                             String.format("frame-%02d.png", decode_count));
                     //long startWhen = System.nanoTime();
@@ -151,6 +172,7 @@ public class Decoder_activity {
                     {
 
                     }
+                    */
                     decode_count++;
                     mediaCodec.releaseOutputBuffer(outIndex, false);
 
