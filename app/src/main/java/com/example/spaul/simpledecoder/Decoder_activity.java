@@ -1,6 +1,7 @@
 package com.example.spaul.simpledecoder;
 
 
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.media.MediaCodec;
@@ -13,8 +14,10 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -33,6 +36,12 @@ public class Decoder_activity {
     private static final String INPUT_FILE = "source.mp4";
 
     private static final String TAG = "SP_MediaDecoder";
+    //bmp configuration
+    private static int width = 4096;
+    private static int height = 512;
+    private ByteBuffer outputBuffer;
+    private static int decode_count = 0;
+    public static int MAX_FRAMES = 4;
 
 
     public boolean feedInputBuffer(MediaExtractor source, MediaCodec codec) {
@@ -119,13 +128,24 @@ public class Decoder_activity {
                     bufferInfo.offset = info.offset;
                     Log.d(TAG, "output index= " +outIndex + ", info size = "+ info.size );
 
-                    ByteBuffer outputBuffer = mediaCodec.getOutputBuffer(outIndex);
+                    //need to add get output buffer here
+                    outputBuffer = mediaCodec.getOutputBuffer(outIndex);
                     Log.d("SP", "size of the output buffer = " + outputBuffer.toString().length() + "," + outputBuffer.position()+","+outputBuffer.limit());
                     //save the bmp through a function
+                    File outputFile = new File(FILES_DIR,
+                            String.format("frame-%02d.png", decode_count));
+                    //long startWhen = System.nanoTime();
+                    try {
+                        Log.d(TAG, "Before calling save frame");
+                        if(decode_count<MAX_FRAMES)saveFrame(outputFile.toString());
+                    }
+                    catch(IOException e)
+                    {
 
-
+                    }
+                    decode_count++;
                     mediaCodec.releaseOutputBuffer(outIndex, false);
-                    //need to add get output buffer here
+
 
                     Log.d(TAG,String.format("pts:%s",info.presentationTimeUs));
 
@@ -136,7 +156,30 @@ public class Decoder_activity {
             }
         }
     }
+    //for saving the frame
+    public void saveFrame(String filename) throws IOException {
 
+        Log.d(TAG, "Inside saveFrame");
+        BufferedOutputStream bos = null;
+        try {
+            bos = new BufferedOutputStream(new FileOutputStream(filename));
+            Log.d(TAG, "before creating bmp");
+            Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Log.d(TAG, "before outbuf rewind");
+            outputBuffer.rewind();
+            Log.d(TAG, "copy pixels from buffer");
+            bmp.copyPixelsFromBuffer(outputBuffer);//causing error here, telling buffer is not large enough for pixels
+            Log.d(TAG, "compress and save it");
+            bmp.compress(Bitmap.CompressFormat.PNG, 90, bos);
+            Log.d(TAG, "recycle()");
+            bmp.recycle();
+        } finally {
+            if (bos != null) bos.close();
+        }
+        Log.d(TAG, "Saved " + width + "x" + height + " frame as '" + filename + "'");
+
+
+    }
 
     private void doDecoder(){
 
